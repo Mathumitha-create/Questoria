@@ -1,0 +1,8 @@
+{
+  "name": "Questoria",
+  "description": "A highly immersive gamified education platform for undergraduate students, featuring 3D environments, coding challenges, and AI mentorship.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

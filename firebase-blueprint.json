@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user progress, currency, and skill tree data.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID from Firebase Auth" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string", "description": "User's avatar URL" },
+        "level": { "type": "integer", "description": "Current level" },
+        "xp": { "type": "integer", "description": "Current experience points" },
+        "coins": { "type": "integer", "description": "Current currency" },
+        "streak": { "type": "integer", "description": "Current daily streak" },
+        "badges": { "type": "array", "items": { "type": "string" } },
+        "unlockedZones": { "type": "array", "items": { "type": "string" } },
+        "skills": { "type": "object", "description": "Map of skill levels" }
+      },
+      "required": ["uid", "displayName", "email", "level", "xp", "coins"]
+    },
+    "Quest": {
+      "title": "Quest",
+      "description": "Defines a learning mission.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard", "Legendary"] },
+        "xpReward": { "type": "integer" },
+        "coinReward": { "type": "integer" },
+        "category": { "type": "string" },
+        "requirements": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "title", "difficulty", "xpReward"]
+    },
+    "MarketItem": {
+      "title": "Market Item",
+      "description": "Items available for purchase in the shop.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "integer" },
+        "type": { "type": "string", "enum": ["skin", "upgrade", "boost"] },
+        "rarity": { "type": "string", "enum": ["Common", "Rare", "Epic", "Legendary"] }
+      },
+      "required": ["id", "name", "price", "type"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents."
+    },
+    "/quests/{questId}": {
+      "schema": "Quest",
+      "description": "Available quests in the universe."
+    },
+    "/market/{itemId}": {
+      "schema": "MarketItem",
+      "description": "Items in the Questoria shop."
+    }
+  }
+}

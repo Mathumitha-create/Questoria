@@ -1,0 +1,20 @@
+Error: [31m  Failed to scan for dependencies from entries:
+  C:/Users/LENOVO/Desktop/Questoria/questoria-js/index.html
+
+  [39m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mUnexpected "!"[0m
+
+    src/components/Profile.jsx:31:69:
+[37m      31 │ ...nst ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY[32m![37m });
+         ╵                                                                 [32m^[0m
+
+
+    at failureErrorWithLog (C:\Users\LENOVO\Desktop\Questoria\questoria-js\node_modules\vite\node_modules\esbuild\lib\main.js:1467:15)
+    at C:\Users\LENOVO\Desktop\Questoria\questoria-js\node_modules\vite\node_modules\esbuild\lib\main.js:926:25
+    at runOnEndCallbacks (C:\Users\LENOVO\Desktop\Questoria\questoria-js\node_modules\vite\node_modules\esbuild\lib\main.js:1307:45)
+    at buildResponseToResult (C:\Users\LENOVO\Desktop\Questoria\questoria-js\node_modules\vite\node_modules\esbuild\lib\main.js:924:7)
+    at C:\Users\LENOVO\Desktop\Questoria\questoria-js\node_modules\vite\node_modules\esbuild\lib\main.js:936:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (C:\Users\LENOVO\Desktop\Questoria\questoria-js\node_modules\vite\node_modules\esbuild\lib\main.js:935:54)
+    at handleRequest (C:\Users\LENOVO\Desktop\Questoria\questoria-js\node_modules\vite\node_modules\esbuild\lib\main.js:628:17)
+    at handleIncomingPacket (C:\Users\LENOVO\Desktop\Questoria\questoria-js\node_modules\vite\node_modules\esbuild\lib\main.js:653:7)
+    at Socket.readFromStdout (C:\Users\LENOVO\Desktop\Questoria\questoria-js\node_modules\vite\node_modules\esbuild\lib\main.js:581:7)
