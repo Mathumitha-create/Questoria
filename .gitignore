@@ -9,3 +9,4 @@ coverage/
 build_output.txt
 .env*
 !.env.example
+firebase-applet-config.json
