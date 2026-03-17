@@ -1,26 +1,69 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Shield, Zap, Award, LogOut, Camera, Sparkles, Loader2, Check, RefreshCw, Palette } from 'lucide-react';
-import { useAuth } from '../AuthContext';
-import { logout, db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
-import { cn } from '../lib/utils';
+import React, { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  User,
+  Mail,
+  Shield,
+  Zap,
+  Award,
+  LogOut,
+  Camera,
+  Sparkles,
+  Loader2,
+  Check,
+  RefreshCw,
+  Palette,
+} from "lucide-react";
+import { useAuth } from "../AuthContext";
+import { cn } from "../lib/utils";
 import { GoogleGenAI } from "@google/genai";
+import { api } from "../lib/api";
 
 const PREDEFINED_ASSETS = [
-  { id: 'cyber', name: 'Cyberpunk', url: 'https://picsum.photos/seed/cyber/400' },
-  { id: 'fantasy', name: 'Fantasy', url: 'https://picsum.photos/seed/fantasy/400' },
-  { id: 'tech', name: 'Tech', url: 'https://picsum.photos/seed/tech/400' },
-  { id: 'steampunk', name: 'Steampunk', url: 'https://picsum.photos/seed/steam/400' },
+  {
+    id: "cyber",
+    name: "Cyberpunk",
+    url: "https://picsum.photos/seed/cyber/400",
+  },
+  {
+    id: "fantasy",
+    name: "Fantasy",
+    url: "https://picsum.photos/seed/fantasy/400",
+  },
+  { id: "tech", name: "Tech", url: "https://picsum.photos/seed/tech/400" },
+  {
+    id: "steampunk",
+    name: "Steampunk",
+    url: "https://picsum.photos/seed/steam/400",
+  },
 ];
 
 export function Profile() {
-  const { user, profile } = useAuth();
+  const { user, profile, logout, refreshProfile } = useAuth();
   const [isCustomizing, setIsCustomizing] = useState(false);
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    api
+      .get("/user/stats")
+      .then((data) => {
+        if (!mounted) return;
+        setStats(data);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setStats(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   if (!user || !profile) return null;
 
@@ -28,9 +71,11 @@ export function Profile() {
     if (!prompt) return;
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const ai = new GoogleGenAI({
+        apiKey: import.meta.env.VITE_GEMINI_KEY || "",
+      });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: "gemini-2.5-flash-image",
         contents: {
           parts: [
             {
@@ -48,7 +93,7 @@ export function Profile() {
         }
       }
     } catch (error) {
-      console.error('Error generating image:', error);
+      console.error("Error generating image:", error);
     } finally {
       setIsGenerating(false);
     }
@@ -57,15 +102,15 @@ export function Profile() {
   const handleSaveAvatar = async (imageUrl) => {
     setIsSaving(true);
     try {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        photoURL: imageUrl
+      await api.patch("/profile/me", {
+        profilePhoto: imageUrl,
       });
+      await refreshProfile();
       setIsCustomizing(false);
       setGeneratedImage(null);
-      setPrompt('');
+      setPrompt("");
     } catch (error) {
-      console.error('Error saving avatar:', error);
+      console.error("Error saving avatar:", error);
     } finally {
       setIsSaving(false);
     }
@@ -77,13 +122,18 @@ export function Profile() {
         <div className="h-48 w-full bg-gradient-to-r from-cyan-600/20 to-purple-600/20 rounded-[40px] border border-white/10" />
         <div className="absolute -bottom-12 left-12 flex items-end gap-6">
           <div className="relative group">
-            <img 
-              src={profile.photoURL || user.photoURL || 'https://picsum.photos/seed/user/200'} 
-              alt="Profile" 
+            <img
+              src={
+                profile.profilePhoto ||
+                profile.photoURL ||
+                user.photoURL ||
+                "https://picsum.photos/seed/user/200"
+              }
+              alt="Profile"
               className="w-32 h-32 rounded-3xl border-4 border-slate-950 object-cover shadow-2xl"
               referrerPolicy="no-referrer"
             />
-            <button 
+            <button
               onClick={() => setIsCustomizing(true)}
               className="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
             >
@@ -91,20 +141,23 @@ export function Profile() {
             </button>
           </div>
           <div className="pb-4">
-            <h1 className="text-3xl font-black text-white mb-1">{profile.displayName}</h1>
+            <h1 className="text-3xl font-black text-white mb-1">
+              {profile.displayName}
+            </h1>
             <p className="text-slate-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
-              <Shield size={12} className="text-cyan-400" /> Level {profile.level} Master Architect
+              <Shield size={12} className="text-cyan-400" /> Level{" "}
+              {profile.level} Master Architect
             </p>
           </div>
         </div>
         <div className="absolute bottom-4 right-8 flex gap-3">
-          <button 
+          <button
             onClick={() => setIsCustomizing(true)}
             className="flex items-center gap-2 px-6 py-2 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl hover:bg-cyan-500 hover:text-white transition-all font-bold text-sm"
           >
             <Palette size={18} /> CUSTOMIZE
           </button>
-          <button 
+          <button
             onClick={logout}
             className="flex items-center gap-2 px-6 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl hover:bg-red-500 hover:text-white transition-all font-bold text-sm"
           >
@@ -117,7 +170,7 @@ export function Profile() {
         {isCustomizing && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
@@ -126,7 +179,7 @@ export function Profile() {
                 <h2 className="text-2xl font-black text-white flex items-center gap-3">
                   <Sparkles className="text-cyan-400" /> AVATAR FORGE
                 </h2>
-                <button 
+                <button
                   onClick={() => setIsCustomizing(false)}
                   className="text-slate-500 hover:text-white transition-colors"
                 >
@@ -137,7 +190,9 @@ export function Profile() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 {/* AI Generation */}
                 <div className="space-y-6">
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">AI Generator</h3>
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">
+                    AI Generator
+                  </h3>
                   <div className="space-y-4">
                     <textarea
                       value={prompt}
@@ -165,7 +220,11 @@ export function Profile() {
                   {generatedImage && (
                     <div className="space-y-4">
                       <div className="aspect-square rounded-3xl overflow-hidden border-4 border-cyan-500/30 shadow-[0_0_30px_rgba(34,211,238,0.2)]">
-                        <img src={generatedImage} alt="Generated" className="w-full h-full object-cover" />
+                        <img
+                          src={generatedImage}
+                          alt="Generated"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="flex gap-3">
                         <button
@@ -173,7 +232,12 @@ export function Profile() {
                           disabled={isSaving}
                           className="flex-1 py-3 bg-cyan-500 text-slate-950 font-black rounded-xl flex items-center justify-center gap-2 hover:bg-cyan-400 transition-colors disabled:opacity-50"
                         >
-                          {isSaving ? <Loader2 className="animate-spin" /> : <Check size={20} />} EQUIP THIS
+                          {isSaving ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <Check size={20} />
+                          )}{" "}
+                          EQUIP THIS
                         </button>
                         <button
                           onClick={() => setGeneratedImage(null)}
@@ -188,7 +252,9 @@ export function Profile() {
 
                 {/* Predefined Assets */}
                 <div className="space-y-6">
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Legacy Assets</h3>
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">
+                    Legacy Assets
+                  </h3>
                   <div className="grid grid-cols-2 gap-4">
                     {PREDEFINED_ASSETS.map((asset) => (
                       <button
@@ -196,14 +262,16 @@ export function Profile() {
                         onClick={() => handleSaveAvatar(asset.url)}
                         className="group relative aspect-square rounded-2xl overflow-hidden border-2 border-transparent hover:border-cyan-500/50 transition-all"
                       >
-                        <img 
-                          src={asset.url} 
-                          alt={asset.name} 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                        <img
+                          src={asset.url}
+                          alt={asset.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           referrerPolicy="no-referrer"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                          <span className="text-white text-xs font-black uppercase tracking-widest">{asset.name}</span>
+                          <span className="text-white text-xs font-black uppercase tracking-widest">
+                            {asset.name}
+                          </span>
                         </div>
                       </button>
                     ))}
@@ -224,11 +292,15 @@ export function Profile() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <Mail size={16} className="text-slate-500" />
-                <span className="text-slate-300 text-sm">{user.email}</span>
+                <span className="text-slate-300 text-sm">
+                  {profile.email || user.email}
+                </span>
               </div>
               <div className="flex items-center gap-3">
                 <Zap size={16} className="text-slate-500" />
-                <span className="text-slate-300 text-sm">Joined March 2026</span>
+                <span className="text-slate-300 text-sm">
+                  Joined March 2026
+                </span>
               </div>
             </div>
           </section>
@@ -238,11 +310,18 @@ export function Profile() {
               <Award size={18} className="text-purple-400" /> BADGES
             </h2>
             <div className="grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="aspect-square rounded-lg bg-slate-800 flex items-center justify-center text-xl grayscale opacity-30">
-                  {i === 1 ? '🥇' : i === 2 ? '🚀' : '🔥'}
-                </div>
-              ))}
+              {(profile.badges || []).length === 0 ? (
+                <div className="text-slate-500 text-sm">No badges yet.</div>
+              ) : (
+                (profile.badges || []).slice(0, 8).map((badge) => (
+                  <div
+                    key={badge}
+                    className="rounded-lg bg-slate-800 px-2 py-3 text-[10px] text-center text-slate-300 font-bold uppercase tracking-wide"
+                  >
+                    {badge}
+                  </div>
+                ))
+              )}
             </div>
           </section>
         </div>
@@ -252,15 +331,19 @@ export function Profile() {
             <h2 className="text-xl font-bold text-white mb-6">SKILL MASTERY</h2>
             <div className="space-y-6">
               {[
-                { name: 'JavaScript', level: 85, color: 'bg-yellow-500' },
-                { name: 'React', level: 70, color: 'bg-cyan-500' },
-                { name: 'Three.js', level: 45, color: 'bg-purple-500' },
-                { name: 'Logic', level: 90, color: 'bg-emerald-500' },
+                { name: "JavaScript", level: 85, color: "bg-yellow-500" },
+                { name: "React", level: 70, color: "bg-cyan-500" },
+                { name: "Three.js", level: 45, color: "bg-purple-500" },
+                { name: "Logic", level: 90, color: "bg-emerald-500" },
               ].map((skill) => (
                 <div key={skill.name}>
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-300 font-bold">{skill.name}</span>
-                    <span className="text-white font-black">{skill.level}%</span>
+                    <span className="text-slate-300 font-bold">
+                      {skill.name}
+                    </span>
+                    <span className="text-white font-black">
+                      {skill.level}%
+                    </span>
                   </div>
                   <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                     <motion.div
@@ -275,26 +358,50 @@ export function Profile() {
           </section>
 
           <section className="bg-slate-900/40 border border-white/5 rounded-3xl p-8">
-            <h2 className="text-xl font-bold text-white mb-6">RECENT ACTIVITY</h2>
+            <h2 className="text-xl font-bold text-white mb-6">
+              RECENT ACTIVITY
+            </h2>
             <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-4 py-3 border-b border-white/5 last:border-0">
-                  <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-lg">
-                    {i === 1 ? '✅' : i === 2 ? '🏆' : '⚔️'}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-white text-sm font-bold">
-                      {i === 1 ? 'Completed "The Binary Fortress"' : 
-                       i === 2 ? 'Reached Level 12' : 
-                       'Started "Neural Nexus"'}
-                    </div>
-                    <div className="text-slate-500 text-xs uppercase font-bold tracking-tighter">2 hours ago</div>
-                  </div>
-                  <div className="text-cyan-400 font-black text-sm">
-                    {i === 1 ? '+500 XP' : i === 2 ? '+1000 XP' : '+50 XP'}
-                  </div>
+              {(stats?.recentSubmissions || []).length === 0 ? (
+                <div className="text-slate-500 text-sm">
+                  No activity yet. Start solving problems!
                 </div>
-              ))}
+              ) : (
+                (stats?.recentSubmissions || []).slice(0, 6).map((s) => {
+                  const difficulty = s.problem?.difficulty || "Easy";
+                  const earnedXp = s.passed
+                    ? difficulty === "Hard"
+                      ? 150
+                      : difficulty === "Medium"
+                        ? 100
+                        : 50
+                    : 0;
+
+                  return (
+                    <div
+                      key={s._id}
+                      className="flex items-center gap-4 py-3 border-b border-white/5 last:border-0"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-lg">
+                        {s.passed ? "✅" : "❌"}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-white text-sm font-bold">
+                          {s.passed ? "Solved" : "Attempted"} "
+                          {s.problem?.title || "Problem"}"
+                        </div>
+                        <div className="text-slate-500 text-xs uppercase font-bold tracking-tighter">
+                          {new Date(s.createdAt).toLocaleString()} •{" "}
+                          {s.language}
+                        </div>
+                      </div>
+                      <div className="text-cyan-400 font-black text-sm">
+                        {s.passed ? `+${earnedXp} XP` : s.status}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </section>
         </div>
