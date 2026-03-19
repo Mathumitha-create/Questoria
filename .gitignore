@@ -10,3 +10,13 @@ build_output.txt
 .env*
 !.env.example
 firebase-applet-config.json
+package-lock.json
+yarn.lock
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.env.local
+.env.*.local
