@@ -11,6 +11,15 @@ import { Landing } from "./components/Landing";
 import { Profile } from "./components/Profile";
 import { Market } from "./components/Market";
 import { Login } from "./components/Login";
+import { Problems } from "./components/Problems";
+import { ProblemDetail } from "./components/ProblemDetail";
+import { Contests } from "./components/Contests";
+import { SkillPaths } from "./components/SkillPaths";
+import { ResumeAnalyzer } from "./components/ResumeAnalyzer";
+import { ResumeComparator } from "./components/ResumeComparator";
+import { Community } from "./components/Community";
+import { AdminPanel } from "./components/AdminPanel";
+import { MockInterview } from "./components/MockInterview";
 import { useAuth } from "./AuthContext";
 import { Bot, X, Loader2 } from "lucide-react";
 
@@ -19,6 +28,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [showMentor, setShowMentor] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [selectedProblem, setSelectedProblem] = useState(null);
 
   if (loading) {
     return (
@@ -33,14 +43,69 @@ export default function App() {
     return <Landing onEnterApp={() => setShowLogin(true)} />;
   }
 
+  const isAdmin =
+    profile?.role === "admin" ||
+    (profile?.email || user?.email || "").toLowerCase() ===
+      "admin@questoria.com";
+
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <Dashboard />;
+        return <Dashboard setActiveTab={setActiveTab} />;
       case "quests":
-        return <Quests />;
+        return <Quests setActiveTab={setActiveTab} />;
       case "playground":
         return <Playground />;
+      case "problems":
+        return (
+          <Problems
+            onSelectProblem={(p) => {
+              setSelectedProblem(p);
+              setActiveTab("problemdetail");
+            }}
+          />
+        );
+      case "problemdetail":
+        return (
+          <ProblemDetail
+            problem={selectedProblem}
+            onBack={() => setActiveTab("problems")}
+          />
+        );
+      case "contests":
+        return (
+          <Contests
+            onSelectProblem={(p) => {
+              setSelectedProblem(p);
+              setActiveTab("problemdetail");
+            }}
+          />
+        );
+      case "mentor":
+        return <AIMentor />;
+      case "interview":
+        return <MockInterview />;
+      case "skillpaths":
+        return <SkillPaths />;
+      case "resume":
+        return <ResumeAnalyzer />;
+      case "comparator":
+        return <ResumeComparator />;
+      case "community":
+        return <Community />;
+      case "admin":
+        return isAdmin ? (
+          <AdminPanel />
+        ) : (
+          <div className="max-w-xl mx-auto mt-20 rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center">
+            <h2 className="text-2xl font-black text-red-300 mb-2">
+              Access Denied
+            </h2>
+            <p className="text-slate-300">
+              Only administrators can access the Admin Panel.
+            </p>
+          </div>
+        );
       case "leaderboard":
         return <Leaderboard />;
       case "profile":
@@ -48,7 +113,7 @@ export default function App() {
       case "market":
         return <Market />;
       default:
-        return <Dashboard />;
+        return <Dashboard setActiveTab={setActiveTab} />;
     }
   };
 
@@ -58,7 +123,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-cyan-500/30">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isAdmin={isAdmin}
+      />
 
       <main className="pl-20 min-h-screen">
         <div className="max-w-7xl mx-auto px-8 py-12">

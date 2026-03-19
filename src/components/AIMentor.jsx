@@ -1,16 +1,23 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import { GoogleGenAI } from "@google/genai";
-import { Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import { cn } from '../lib/utils';
+import { Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { cn } from "../lib/utils";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const geminiApiKey =
+  import.meta.env.VITE_GEMINI_KEY || import.meta.env.VITE_GEMINI_API_KEY || "";
+
+const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
 export function AIMentor() {
   const [messages, setMessages] = useState([
-    { role: 'bot', content: "Hello, Explorer! I'm your Questoria Mentor. Need help with a quest or want to learn a new concept? Just ask!" }
+    {
+      role: "bot",
+      content:
+        "Hello, Explorer! I'm your Questoria Mentor. Need help with a quest or want to learn a new concept? Just ask!",
+    },
   ]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef(null);
 
@@ -24,26 +31,43 @@ export function AIMentor() {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
-          { role: 'user', parts: [{ text: `You are a friendly and encouraging AI mentor in a gamified learning platform called Questoria. Your goal is to help undergraduate students learn technical skills like coding, AI, and logic. Keep your tone game-like, using terms like "quests", "XP", "level up", and "explorers". Be concise and helpful. User says: ${userMessage}` }] }
+          {
+            role: "user",
+            parts: [
+              {
+                text: `You are a friendly and encouraging AI mentor in a gamified learning platform called Questoria. Your goal is to help undergraduate students learn technical skills like coding, AI, and logic. Keep your tone game-like, using terms like "quests", "XP", "level up", and "explorers". Be concise and helpful. User says: ${userMessage}`,
+              },
+            ],
+          },
         ],
         config: {
-          systemInstruction: "You are the Questoria Mentor, a wise and futuristic guide."
-        }
+          systemInstruction:
+            "You are the Questoria Mentor, a wise and futuristic guide.",
+        },
       });
 
-      const botMessage = response.text || "I'm having trouble connecting to the Questoria network. Try again later!";
-      setMessages(prev => [...prev, { role: 'bot', content: botMessage }]);
+      const botMessage =
+        response.text ||
+        "I'm having trouble connecting to the Questoria network. Try again later!";
+      setMessages((prev) => [...prev, { role: "bot", content: botMessage }]);
     } catch (error) {
       console.error("AI Error:", error);
-      setMessages(prev => [...prev, { role: 'bot', content: "The cosmic signals are weak right now. Let's try again in a moment!" }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          content:
+            "The cosmic signals are weak right now. Let's try again in a moment!",
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -57,34 +81,48 @@ export function AIMentor() {
             <Bot size={24} className="text-slate-950" />
           </div>
           <div>
-            <div className="text-white font-black text-sm uppercase tracking-widest">AI Mentor</div>
+            <div className="text-white font-black text-sm uppercase tracking-widest">
+              AI Mentor
+            </div>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] text-emerald-500 font-bold uppercase">Online</span>
+              <span className="text-[10px] text-emerald-500 font-bold uppercase">
+                Online
+              </span>
             </div>
           </div>
         </div>
         <Sparkles size={20} className="text-cyan-400" />
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide"
+      >
         {messages.map((msg, i) => (
-          <div key={i} className={cn(
-            "flex gap-4 max-w-[85%]",
-            msg.role === 'user' ? "ml-auto flex-row-reverse" : ""
-          )}>
-            <div className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-              msg.role === 'user' ? "bg-purple-600" : "bg-cyan-600"
-            )}>
-              {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+          <div
+            key={i}
+            className={cn(
+              "flex gap-4 max-w-[85%]",
+              msg.role === "user" ? "ml-auto flex-row-reverse" : "",
+            )}
+          >
+            <div
+              className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                msg.role === "user" ? "bg-purple-600" : "bg-cyan-600",
+              )}
+            >
+              {msg.role === "user" ? <User size={16} /> : <Bot size={16} />}
             </div>
-            <div className={cn(
-              "p-4 rounded-2xl text-sm leading-relaxed",
-              msg.role === 'user' 
-                ? "bg-purple-600/20 border border-purple-500/30 text-purple-50" 
-                : "bg-slate-900/80 border border-white/5 text-slate-100"
-            )}>
+            <div
+              className={cn(
+                "p-4 rounded-2xl text-sm leading-relaxed",
+                msg.role === "user"
+                  ? "bg-purple-600/20 border border-purple-500/30 text-purple-50"
+                  : "bg-slate-900/80 border border-white/5 text-slate-100",
+              )}
+            >
               <div className="markdown-body">
                 <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
@@ -113,7 +151,7 @@ export function AIMentor() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Ask your mentor anything..."
             className="w-full bg-slate-900 border border-white/10 rounded-xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-cyan-500/50 transition-all"
           />

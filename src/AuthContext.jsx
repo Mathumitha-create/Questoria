@@ -1,111 +1,165 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { auth, db } from "./firebase";
-const OperationType = {
-  CREATE: "create",
-  UPDATE: "update",
-  DELETE: "delete",
-  LIST: "list",
-  GET: "get",
-  WRITE: "write",
-};
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { signInWithGoogle as firebaseGoogleSignIn, auth } from "./firebase";
+import { api, getStoredToken, setStoredToken } from "./lib/api";
 
-function handleFirestoreError(error, operationType, path) {
-  const errInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo:
-        auth.currentUser?.providerData.map((provider) => ({
-          providerId: provider.providerId,
-          displayName: provider.displayName,
-          email: provider.email,
-          photoUrl: provider.photoURL,
-        })) || [],
-    },
-    operationType,
-    path,
+const AuthContext = createContext({
+  user: null,
+  profile: null,
+  token: "",
+  loading: true,
+  login: async () => {},
+  signup: async () => {},
+  loginWithGoogle: async () => {},
+  forgotPassword: async () => {},
+  resetPassword: async () => {},
+  logout: () => {},
+  refreshProfile: async () => {},
+});
+
+function normalizeUser(user) {
+  return {
+    uid: user.id,
+    email: user.email,
+    displayName: user.username,
   };
-  console.error("Firestore Error: ", JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
 }
 
-const AuthContext = createContext({ user: null, profile: null, loading: true });
+function normalizeProfile(user) {
+  return {
+    uid: user.id,
+    displayName: user.username,
+    email: user.email,
+    photoURL: user.profilePhoto,
+    role: user.role,
+    level: user.level,
+    levelTitle: user.levelTitle,
+    points: user.points ?? user.xpPoints,
+    xp: user.xpPoints,
+    xpPoints: user.xpPoints,
+    streak: user.streak,
+    weeklyPoints: user.weeklyPoints || 0,
+    interviewsCompleted: user.interviewsCompleted || 0,
+    badges: user.badges || [],
+    problemsSolved: user.problemsSolved || 0,
+    contestRating: user.contestRating || 1200,
+  };
+}
 
 export const AuthProvider = ({ children }) => {
+  const [token, setToken] = useState("");
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const applySession = (nextToken, backendUser) => {
+    setStoredToken(nextToken);
+    setToken(nextToken);
+    setUser(normalizeUser(backendUser));
+    setProfile(normalizeProfile(backendUser));
+
+    api
+      .post("/gamification/reward/update", { action: "daily_login" })
+      .then(() => refreshProfile())
+      .catch(() => {});
+  };
+
+  const clearSession = () => {
+    setStoredToken("");
+    setToken("");
+    setUser(null);
+    setProfile(null);
+  };
+
+  const refreshProfile = async () => {
+    const { user: backendUser } = await api.get("/auth/me");
+    setUser(normalizeUser(backendUser));
+    setProfile(normalizeProfile(backendUser));
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
+    const bootstrap = async () => {
+      const existingToken = getStoredToken();
+      if (!existingToken) {
+        setLoading(false);
+        return;
+      }
 
-      if (firebaseUser) {
-        const userRef = doc(db, "users", firebaseUser.uid);
-
-        // Listen to profile changes
-        const unsubProfile = onSnapshot(
-          userRef,
-          (docSnap) => {
-            if (docSnap.exists()) {
-              setProfile(docSnap.data());
-              setLoading(false);
-            } else {
-              // Initialize profile if it doesn't exist
-              const newProfile = {
-                uid: firebaseUser.uid,
-                displayName: firebaseUser.displayName || "Explorer",
-                email: firebaseUser.email || "",
-                level: 1,
-                xp: 0,
-                coins: 100,
-                streak: 0,
-                badges: [],
-                unlockedZones: ["Coding Kingdom"],
-                skills: {},
-              };
-              setDoc(userRef, newProfile).catch((err) =>
-                handleFirestoreError(
-                  err,
-                  OperationType.WRITE,
-                  `users/${firebaseUser.uid}`,
-                ),
-              );
-              setProfile(newProfile);
-              setLoading(false);
-            }
-          },
-          (error) => {
-            handleFirestoreError(
-              error,
-              OperationType.GET,
-              `users/${firebaseUser.uid}`,
-            );
-            setLoading(false);
-          },
-        );
-
-        return () => unsubProfile();
-      } else {
-        setProfile(null);
+      setToken(existingToken);
+      try {
+        await refreshProfile();
+      } catch {
+        clearSession();
+      } finally {
         setLoading(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
+    bootstrap();
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, profile, loading }}>
-      {children}
-    </AuthContext.Provider>
+  const login = async (email, password) => {
+    const { token: jwt, user: backendUser } = await api.post("/auth/login", {
+      email,
+      password,
+    });
+    applySession(jwt, backendUser);
+  };
+
+  const signup = async (username, email, password) => {
+    const { token: jwt, user: backendUser } = await api.post("/auth/signup", {
+      username,
+      email,
+      password,
+    });
+    applySession(jwt, backendUser);
+  };
+
+  const loginWithGoogle = async () => {
+    const cred = await firebaseGoogleSignIn();
+    const idToken = await cred.user.getIdToken();
+    const { token: jwt, user: backendUser } = await api.post("/auth/google", {
+      idToken,
+    });
+    applySession(jwt, backendUser);
+  };
+
+  const forgotPassword = async (email) => {
+    return api.post("/auth/forgot-password", { email });
+  };
+
+  const resetPassword = async (tokenValue, password) => {
+    return api.post("/auth/reset-password", { token: tokenValue, password });
+  };
+
+  const logout = () => {
+    auth.signOut().catch(() => {});
+    clearSession();
+  };
+
+  const value = useMemo(
+    () => ({
+      user,
+      profile,
+      token,
+      loading,
+      login,
+      signup,
+      loginWithGoogle,
+      forgotPassword,
+      resetPassword,
+      logout,
+      refreshProfile,
+    }),
+    [user, profile, token, loading],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);
